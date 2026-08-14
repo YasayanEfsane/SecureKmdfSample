@@ -49,7 +49,7 @@ GetErrorText(DWORD error)
 
     std::wstring result = (length != 0 && buffer != nullptr)
         ? std::wstring(buffer, length)
-        : L"Bilinmeyen hata";
+        : L"Unknown error";
 
     if (buffer != nullptr) {
         LocalFree(buffer);
@@ -178,18 +178,18 @@ ValidateResponse(
 int wmain(int argc, wchar_t* argv[])
 {
     const std::wstring inputText =
-        (argc >= 2) ? argv[1] : L"Merhaba KMDF, güvenli paket";
+        (argc >= 2) ? argv[1] : L"Hello KMDF, secure packet";
     std::string inputUtf8;
 
     if (!WideToUtf8(inputText, inputUtf8)) {
-        std::wcerr << L"Girdi UTF-8'e dönüştürülemedi. Hata: "
+        std::wcerr << L"Input could not be converted to UTF-8. Error: "
                    << GetLastError() << L"\n";
         return 1;
     }
 
     if (inputUtf8.size() > MY_MAX_PAYLOAD_SIZE) {
-        std::wcerr << L"Girdi en fazla " << MY_MAX_PAYLOAD_SIZE
-                   << L" UTF-8 baytı olabilir.\n";
+        std::wcerr << L"Input may contain at most " << MY_MAX_PAYLOAD_SIZE
+                   << L" UTF-8 bytes.\n";
         return 1;
     }
 
@@ -204,10 +204,10 @@ int wmain(int argc, wchar_t* argv[])
 
     if (!device.valid()) {
         const DWORD error = GetLastError();
-        std::wcerr << L"Cihaz açılamadı (" << error << L"): "
+        std::wcerr << L"Could not open the device (" << error << L"): "
                    << GetErrorText(error);
         if (error == ERROR_ACCESS_DENIED) {
-            std::wcerr << L"Uygulamayı yükseltilmiş yönetici oturumunda çalıştırın.\n";
+            std::wcerr << L"Run the application from an elevated Administrator session.\n";
         }
         return 1;
     }
@@ -244,7 +244,7 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     if (!ok) {
-        std::wcerr << L"DeviceIoControl başarısız (" << ioctlError << L"): "
+        std::wcerr << L"DeviceIoControl failed (" << ioctlError << L"): "
                    << GetErrorText(ioctlError);
         SecureZeroMemory(&request, sizeof(request));
         SecureZeroMemory(&response, sizeof(response));
@@ -252,7 +252,7 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     if (!ValidateResponse(request, response, bytesReturned)) {
-        std::wcerr << L"Sürücü yanıtı protokol doğrulamasından geçemedi.\n";
+        std::wcerr << L"The driver response failed protocol validation.\n";
         SecureZeroMemory(&request, sizeof(request));
         SecureZeroMemory(&response, sizeof(response));
         return 1;
@@ -260,14 +260,14 @@ int wmain(int argc, wchar_t* argv[])
 
     std::wstring outputText;
     if (!Utf8ToWide(response.Payload, response.PayloadLength, outputText)) {
-        std::wcerr << L"Yanıt geçerli UTF-8 değil.\n";
+        std::wcerr << L"The response is not valid UTF-8.\n";
         SecureZeroMemory(&request, sizeof(request));
         SecureZeroMemory(&response, sizeof(response));
         return 1;
     }
 
-    std::wcout << L"Girdi : " << inputText << L"\n"
-               << L"Yanıt : " << outputText << L"\n";
+    std::wcout << L"Input    : " << inputText << L"\n"
+               << L"Response : " << outputText << L"\n";
 
     SecureZeroMemory(&request, sizeof(request));
     SecureZeroMemory(&response, sizeof(response));
