@@ -1,0 +1,47 @@
+# Visual Studio and IDE state
+.vs/
+.vscode/
+*.suo
+*.user
+*.vcxproj.user
+
+# Build output directories
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+ARM64/
+[Bb]in/
+[Oo]bj/
+
+# Compiler, linker, and WDK artifacts
+*.obj
+*.iobj
+*.ipdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+*.sys
+*.pdb
+*.cat
+*.tlog
+*.lastbuildstate
+*.log
+*.cache
+*.VC.db
+*.VC.VC.opendb
+
+# Test-signing certificates and private keys
+*.cer
+*.pfx
+*.pvk
+*.snk
+
+# Temporary files
+*.tmp
+*.bak
+*.userprefs
+Thumbs.db
+Desktop.ini
