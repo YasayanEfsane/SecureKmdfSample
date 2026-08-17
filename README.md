@@ -10,7 +10,7 @@
 ![Languages](https://img.shields.io/badge/Languages-C%20%7C%20C%2B%2B-00599C)
 ![Access](https://img.shields.io/badge/Access-SYSTEM%20%7C%20Administrators-B31B1B)
 
-Pure KMDF · No raw user pointers · No direct I/O · No explicit dynamic buffer allocation
+KMDF · No raw user pointers · No direct I/O · No explicit dynamic buffer allocation
 
 </div>
 
@@ -612,4 +612,4 @@ If the service is marked for deletion, close service-management tools and reboot
 
 ## License
 
-No license file is included in this source bundle. Add an explicit license before public redistribution so readers know what they are permitted to copy, modify, and redistribute.
+No license file is included in this source bundle.
