@@ -1,0 +1,17 @@
+* text=auto
+
+*.c     text eol=lf
+*.h     text eol=lf
+*.cpp   text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.sln   text eol=crlf
+*.vcxproj text eol=crlf
+
+*.png binary
+*.jpg binary
+*.zip binary
+*.pfx binary
+*.cat binary
+*.sys binary
