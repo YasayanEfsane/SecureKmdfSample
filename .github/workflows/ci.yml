@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  user-mode-build-and-tests:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3
+        with:
+          msbuild-architecture: x64
+
+      - name: Build user-mode client
+        run: msbuild UserApp.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64
+
+      - name: Build protocol tests
+        run: msbuild ProtocolTests.vcxproj /m /t:Build /p:Configuration=Release /p:Platform=x64
+
+      - name: Run offline protocol tests
+        run: .\bin\x64\Release\ProtocolTests.exe
+
+      - name: Upload user-mode artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: secure-kmdf-user-mode-x64
+          path: |
+            bin/x64/Release/UserApp.exe
+            bin/x64/Release/ProtocolTests.exe
+          if-no-files-found: error
+
+# The hosted job intentionally does not build or load the kernel driver.
+# Build and integration-test the driver in a controlled Windows + WDK VM.

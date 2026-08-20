@@ -9,8 +9,10 @@
 ![IOCTL](https://img.shields.io/badge/IOCTL-METHOD__BUFFERED-2EA44F)
 ![Languages](https://img.shields.io/badge/Languages-C%20%7C%20C%2B%2B-00599C)
 ![Access](https://img.shields.io/badge/Access-SYSTEM%20%7C%20Administrators-B31B1B)
+![CI](https://github.com/YasayanEfsane/SecureKmdfSample/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-KMDF · No raw user pointers · No direct I/O · No explicit dynamic buffer allocation
+Pure KMDF · No raw user pointers · No direct I/O · No explicit dynamic buffer allocation
 
 </div>
 
@@ -67,37 +69,33 @@ The I/O manager owns the intermediate system buffer. The driver never dereferenc
 
 ## Quick Start
 
-This repository is a **source-only bundle**. It intentionally contains no prebuilt `.sys`, `.cat`, `.inf`, `.vcxproj`, or `.sln` file. Create the two Visual Studio projects described below, then run the sample on a disposable Windows test machine or VM.
+Clone the repository, open the included solution, and run kernel components only
+on a disposable Windows test machine or VM. The repository intentionally contains
+no prebuilt or signed driver and no INF/CAT deployment package.
 
 ### 1. Requirements
 
 | Component | Requirement |
 |---|---|
 | Host OS | 64-bit Windows 10 or Windows 11 |
-| IDE | Visual Studio 2022 with Desktop development with C++ |
+| IDE | Visual Studio 2022 or newer with Desktop development with C++ |
 | Driver tools | A WDK version compatible with the installed Visual Studio release |
 | SDK | Windows SDK selected by the WDK installer |
 | Target | x64 test VM strongly recommended |
 | Privileges | Elevated Administrator terminal |
 | Signing | Test-signed driver for lab use; production-trusted signature for release |
 
-### 2. Create the projects
+### 2. Open the solution
 
-Create a blank solution named `SecureKmdfSample` with two projects:
+Open `SecureKmdfSample.sln`. It contains three x64 projects:
 
-1. **Driver project**
-   - Template: **Kernel Mode Driver, Empty (KMDF)**
-   - Project name: `SecureKmdfSample`
-   - Add `Driver.c`, `Device.c`, `Queue.c`, and `Public.h`.
-   - Keep the source files compiled as C.
-   - Select an x64 Windows 10/11 target and a KMDF version supported by that target.
+1. `SecureKmdfSample.vcxproj` — KMDF non-PnP kernel driver.
+2. `UserApp.vcxproj` — C++17 Win32 console client.
+3. `ProtocolTests.vcxproj` — offline ABI checks and optional live-driver tests.
 
-2. **Client project**
-   - Template: **Console App**
-   - Project name: `UserApp`
-   - Add `UserApp.cpp` and the shared `Public.h`.
-   - Set **C++ Language Standard** to C++17 or newer.
-   - Set **Character Set** to Unicode.
+If your WDK uses a different target platform or toolset revision, retarget the
+solution in Visual Studio before building. The driver creates its own named
+control device, so no hardware ID or PnP device node is required.
 
 The driver is non-PnP and creates its own named control device. No hardware ID or device node is required.
 
@@ -106,8 +104,9 @@ The driver is non-PnP and creates its own named control device. No hardware ID o
 Select `Debug | x64` and choose **Build → Build Solution**. Exact output directories depend on the solution layout; typical outputs are:
 
 ```text
-x64\Debug\SecureKmdfSample.sys
-x64\Debug\UserApp.exe
+bin\x64\Debug\SecureKmdfSample.sys
+bin\x64\Debug\UserApp.exe
+bin\x64\Debug\ProtocolTests.exe
 ```
 
 ### 4. Copy, register, start, and run
@@ -116,13 +115,13 @@ Open an **elevated x64 Native Tools Command Prompt**:
 
 ```bat
 mkdir C:\Drivers\SecureKmdf
-copy /Y .\x64\Debug\SecureKmdfSample.sys C:\Drivers\SecureKmdf\
+copy /Y .\bin\x64\Debug\SecureKmdfSample.sys C:\Drivers\SecureKmdf\
 
 sc.exe create SecureKmdfSample type= kernel start= demand error= normal ^
   binPath= C:\Drivers\SecureKmdf\SecureKmdfSample.sys
 
 sc.exe start SecureKmdfSample
-.\x64\Debug\UserApp.exe "hello from ring 3"
+.\bin\x64\Debug\UserApp.exe "hello from ring 3"
 ```
 
 The current client prints:
@@ -156,10 +155,13 @@ msbuild .\SecureKmdfSample.sln /t:Clean,Build ^
 Build only one project when diagnosing:
 
 ```bat
-msbuild .\SecureKmdfSample\SecureKmdfSample.vcxproj /t:Build ^
+msbuild .\SecureKmdfSample.vcxproj /t:Build ^
   /p:Configuration=Debug /p:Platform=x64
 
-msbuild .\UserApp\UserApp.vcxproj /t:Build ^
+msbuild .\UserApp.vcxproj /t:Build ^
+  /p:Configuration=Debug /p:Platform=x64
+
+msbuild .\ProtocolTests.vcxproj /t:Build ^
   /p:Configuration=Debug /p:Platform=x64
 ```
 
@@ -176,7 +178,7 @@ This builds only `UserApp.exe`. The kernel driver still requires a WDK driver pr
 
 ### Method D — Enterprise WDK
 
-The Enterprise WDK (EWDK) provides a command-line build environment without a full Visual Studio IDE. Mount the EWDK ISO, launch its build environment, and build the solution:
+The Enterprise WDK (EWDK) provides a command-line build environment without a full Visual Studio IDE. Mount the EWDK ISO, launch its build environment, and build the included solution:
 
 ```bat
 X:\LaunchBuildEnv.cmd
@@ -185,7 +187,8 @@ msbuild .\SecureKmdfSample.sln /t:Clean,Build ^
   /p:Configuration=Debug /p:Platform=x64
 ```
 
-Replace `X:` with the mounted EWDK drive. The solution/project files must already exist and target toolsets available in that EWDK image.
+Replace `X:` with the mounted EWDK drive. Retarget the projects if the selected
+toolsets are unavailable in that EWDK image.
 
 ## Driver Signing and Test Mode
 
@@ -218,7 +221,7 @@ shutdown.exe /r /t 0
 
 ### Method 1 — Service Control Manager from Command Prompt
 
-This is the canonical path for the current non-PnP, source-only sample:
+This is the canonical path for the current non-PnP sample:
 
 ```bat
 mkdir C:\Drivers\SecureKmdf
@@ -339,6 +342,7 @@ If `sc.exe create` reports that the service already exists, query it first. Stop
 | `Device.c` | Secured control-device creation, exclusive access, symbolic link, cleanup callback |
 | `Queue.c` | Sequential PASSIVE_LEVEL queue, exact buffer checks, validation, processing, completion |
 | `UserApp.cpp` | RAII handle management, UTF-8 conversion, request creation, `DeviceIoControl`, response validation, secure clearing |
+| `tests/ProtocolTests.cpp` | Offline ABI assertions and opt-in live-driver negative/positive tests |
 
 ## Device and Protocol Contract
 
@@ -437,17 +441,45 @@ The driver does not call `ExAllocatePoolWithTag` or `ExAllocatePool2` because pa
 
 ```text
 SecureKmdf/
-├── Driver.c       # Driver entry, KMDF configuration, unload
-├── Device.c       # Secure non-PnP control device
-├── Queue.c        # IOCTL queue, validation, processing
-├── Public.h       # Shared kernel/user protocol
-├── UserApp.cpp    # Win32 console client
-└── README.md      # Build, run, test, and security guide
+├── .github/                    # CI, CodeQL, Dependabot, issue and PR templates
+├── tests/ProtocolTests.cpp     # ABI and live-driver tests
+├── .gitattributes              # Repository line-ending policy
+├── .gitignore                  # Visual Studio, WDK, and signing artifacts
+├── SecureKmdfSample.sln        # Visual Studio solution
+├── SecureKmdfSample.vcxproj    # KMDF driver project
+├── UserApp.vcxproj             # User-mode client project
+├── ProtocolTests.vcxproj       # Protocol test project
+├── Driver.c                    # Driver entry and unload
+├── Device.c                    # Secure non-PnP control device
+├── Queue.c                     # IOCTL validation and processing
+├── Public.h                    # Shared kernel/user protocol
+├── UserApp.cpp                 # Win32 console client
+├── SECURITY.md                 # Private disclosure guidance
+├── CONTRIBUTING.md             # Contribution and security invariants
+├── CHANGELOG.md                # Release history
+└── LICENSE                     # MIT license
 ```
 
 ## Verification and Testing
 
 Always test kernel code in a disposable VM with a snapshot.
+
+Build and run the offline protocol checks without loading the driver:
+
+```bat
+msbuild .\ProtocolTests.vcxproj /t:Build /p:Configuration=Release /p:Platform=x64
+.\bin\x64\Release\ProtocolTests.exe
+```
+
+After building, test-signing, registering, and starting the driver in an
+elevated isolated VM, run the integration suite:
+
+```bat
+.\bin\x64\Release\ProtocolTests.exe --integration
+```
+
+The integration mode sends valid echo/uppercase requests and verifies rejection
+of malformed sizes, fields, payload tails, and unknown IOCTLs.
 
 ### Positive tests
 
@@ -465,7 +497,8 @@ Start the driver from an elevated session, then launch `UserApp.exe` from a stan
 
 ### Malformed packet tests
 
-A dedicated test harness or IOCTL fuzzer should cover:
+The included integration harness covers the core malformed cases. A dedicated
+IOCTL fuzzer should additionally cover:
 
 - every input/output length from 0 through at least 512 bytes;
 - unknown IOCTL values;
@@ -525,6 +558,17 @@ Run the checks available in your WDK/Visual Studio version:
 - compiler warnings at a high warning level;
 - architecture builds for every supported target;
 - a protocol-aware user-mode fuzzer.
+
+## Repository Automation
+
+- `CI` builds the user-mode client and offline test harness on GitHub-hosted
+  Windows runners, runs ABI tests, and uploads the executables.
+- `CodeQL` performs no-build C/C++ security analysis across the repository.
+- Dependabot checks GitHub Actions dependencies monthly.
+
+The hosted CI workflow intentionally does not compile, sign, install, or load
+the kernel driver. Perform WDK driver builds and integration tests in a
+controlled Windows VM using the instructions above.
 
 ## Troubleshooting
 
@@ -586,12 +630,12 @@ If the service is marked for deletion, close service-management tools and reboot
 - Run Driver Verifier, static analysis, and HLK/attestation requirements appropriate to the distribution channel.
 - Create a signed INF/CAT package when your deployment model requires one.
 - Establish secure update, rollback, telemetry, and incident-response procedures.
-- Add an explicit open-source or proprietary license before redistributing the project.
+- Review dependency, toolchain, certificate, and signing policies before each release.
 
 ## Limitations
 
 - The sample is non-PnP and has no INF/package project.
-- The bundle contains source only; no prebuilt or signed driver is provided.
+- No prebuilt or signed driver is provided.
 - The control device is exclusive, so it intentionally supports one open handle.
 - The queue is sequential; throughput is secondary to a simple race-resistant model.
 - The uppercase operation is ASCII-only.
@@ -612,4 +656,4 @@ If the service is marked for deletion, close service-management tools and reboot
 
 ## License
 
-No license file is included in this source bundle.
+This project is available under the [MIT License](LICENSE).
